@@ -1,3 +1,9 @@
+//! Module for connecting to a server running Csicsay's chat program 
+//! Usage: start by making an inactive Session with Session::new(). Next, define the functions that will handle events with the provided methods. Activate the session by connecting to the server with the Session::connect() method.
+//! You can send and recieve messages with an ActiveSession 
+
+// TODO: unfuck everything up
+
 use std::{
     error::Error,
     io::{Read, Write},
