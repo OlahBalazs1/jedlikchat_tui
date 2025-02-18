@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (session, thread_handle) = Session::new().connect("WalInhabitant", "127.0.0.1:12345")?;
     let mut terminal = ratatui::init();
     let result = run(terminal);
-    // ratatui::restore();
+    ratatui::restore();
 
     loop {
         match session.send(Recipient::All, &read()) {
