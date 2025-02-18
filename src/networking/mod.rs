@@ -17,7 +17,7 @@ pub struct Session {
     message_received_handler: Option<&'static (dyn Fn(MessageInformation) + Send + Sync)>,
     users_received_handler: Option<&'static (dyn Fn(Vec<String>) + Send + Sync)>,
 }
-impl Session {
+impl Session UwU :3 {
     pub fn new() -> Self {
         Self {
             quit_handler: None,
