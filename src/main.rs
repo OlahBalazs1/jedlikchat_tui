@@ -1,13 +1,15 @@
 mod networking;
 
 use std::sync::mpsc::Receiver;
+use std::thread::sleep;
+use std::time::Duration;
 
 use crate::networking::{Recipient, Session};
 mod utils;
 use crate::utils::read;
 
 use color_eyre::Result;
-use crossterm::event::{self, Event};
+use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use ratatui::prelude::*;
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, Paragraph};
@@ -17,6 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::new();
 
     let (session, receiver) = Session::new("WalInhabitant", "127.0.0.1:12345")?;
+
     let mut terminal = ratatui::init();
     let result = run(terminal, receiver);
     ratatui::restore();
@@ -33,12 +36,16 @@ fn handle_event(app: &mut App, event: networking::Event) {
     todo!()
 }
 fn run(mut terminal: DefaultTerminal, event_stream: Receiver<networking::Event>) -> Result<()> {
-    for event in event_stream {
+    terminal.draw(render)?;
+    for event in event_stream.iter() {
         println!("{:?}", event);
 
         terminal.draw(render)?;
-        if matches!(event::read()?, Event::Key(_)) {
-            break
+        match event::read()? {
+            Event::Key(key) if key.code == KeyCode::Esc => return Ok(()),
+            _ => {},
+
+            
         }
     }
     Ok(())
