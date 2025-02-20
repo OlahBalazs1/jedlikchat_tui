@@ -1,21 +1,24 @@
 mod networking;
 
-use std::net::ToSocketAddrs;
-
 use crate::networking::{Recipient, Session};
 mod utils;
 use crate::utils::read;
 
+// mod network_2_electric_boogaloo;
+
 use color_eyre::Result;
 use crossterm::event::{self, Event};
-use crossterm::style;
 use ratatui::prelude::*;
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, Paragraph};
 use ratatui::{layout, DefaultTerminal, Frame};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (session, thread_handle) = Session::new().connect("WalInhabitant", "127.0.0.1:12345")?;
+    let mut app = App::new();
+    let borrow = &mut app;
+
+    let binding = (move |event| handle_event(borrow, event));
+    let session = Session::new("WalInhabitant", "127.0.0.1:12345", &binding)?;
     let mut terminal = ratatui::init();
     let result = run(terminal);
     ratatui::restore();
@@ -26,6 +29,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => panic!("{e}"),
         }
     }
+}
+
+fn handle_event(app: &mut App, event: networking::Event) {
+    todo!()
 }
 fn run(mut terminal: DefaultTerminal) -> Result<()> {
     loop {
@@ -51,7 +58,6 @@ fn render(frame: &mut Frame) {
         .border_style(Style::new().fg(Color::Red));
 
     let input_block = Block::new();
-    google en passant :
     let messages = Paragraph::new(
         "gfdjklgdjhgjlkfdglhfdgjfldkgfd
         gfdjklgdjhgjlkfdglhfdgjfldkgfdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaadg
@@ -69,4 +75,18 @@ fn render(frame: &mut Frame) {
     frame.render_widget(messages, message_block.inner(left_split[0]));
     frame.render_widget(input_block, left_split[1]);
     frame.render_widget(users_block, vertical_split[1]);
+}
+
+struct App {
+    messages: Vec<String>,
+    users: Vec<String>,
+}
+
+impl App {
+    fn new() -> Self {
+        Self {
+            messages: vec![],
+            users: vec![],
+        }
+    }
 }
