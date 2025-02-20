@@ -1,10 +1,10 @@
 mod networking;
 
+use std::sync::mpsc::Receiver;
+
 use crate::networking::{Recipient, Session};
 mod utils;
 use crate::utils::read;
-
-// mod network_2_electric_boogaloo;
 
 use color_eyre::Result;
 use crossterm::event::{self, Event};
@@ -15,12 +15,10 @@ use ratatui::{layout, DefaultTerminal, Frame};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App::new();
-    let borrow = &mut app;
 
-    let binding = (move |event| handle_event(borrow, event));
-    let session = Session::new("WalInhabitant", "127.0.0.1:12345", &binding)?;
+    let (session, receiver) = Session::new("WalInhabitant", "127.0.0.1:12345")?;
     let mut terminal = ratatui::init();
-    let result = run(terminal);
+    let result = run(terminal, receiver);
     ratatui::restore();
 
     loop {
@@ -34,13 +32,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn handle_event(app: &mut App, event: networking::Event) {
     todo!()
 }
-fn run(mut terminal: DefaultTerminal) -> Result<()> {
-    loop {
+fn run(mut terminal: DefaultTerminal, event_stream: Receiver<networking::Event>) -> Result<()> {
+    for event in event_stream {
+        println!("{:?}", event);
+
         terminal.draw(render)?;
         if matches!(event::read()?, Event::Key(_)) {
-            break Ok(());
+            break
         }
     }
+    Ok(())
 }
 fn render(frame: &mut Frame) {
     let vertical_split =
