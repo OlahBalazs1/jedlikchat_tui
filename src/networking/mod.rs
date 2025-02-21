@@ -1,6 +1,3 @@
-//! Module for connecting to a server running Csicsay's chat program
-//! Usage: Make a new session with Session::new()
-
 use std::{
     error::Error,
     io::{BufRead, BufReader, Write},
@@ -9,8 +6,8 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-pub struct Session<'a> {
-    name: &'a str,
+pub struct Session {
+    name: String,
     socket: TcpStream,
     receive_join: Option<JoinHandle<()>>,
     event_sender: Sender<Event>,
@@ -44,51 +41,51 @@ pub enum Recipient {
     This,
 }
 
-impl<'a> Session<'a> {
-    pub fn new(
-        name: &'a str,
-        socket: &str,
-    ) -> Result<(Self, Receiver<Event>), Box<dyn Error>> {
+impl Session {
+    pub fn new(name: &str, socket: &str) -> Result<(Self, Receiver<Event>), Box<dyn Error>> {
         let address = socket.to_socket_addrs().unwrap().next().unwrap();
         let mut connection = TcpStream::connect(address)?;
         let _ = connection.write(format!("ID:{}", name).as_bytes());
         let (event_sender, event_receiver) = channel();
         let mut active_connection = Session {
-            name,
+            name: name.to_string(),
             stop_sender: None,
             socket: connection,
             receive_join: None,
             event_sender: event_sender.clone(),
         };
-        let receive_join= active_connection.start_receiving(event_sender);
+        let receive_join = active_connection.start_receiving(event_sender);
 
-        Ok((Session {
-            receive_join: Some(receive_join),
-            ..active_connection
-        }, event_receiver))
+        Ok((
+            Session {
+                receive_join: Some(receive_join),
+                ..active_connection
+            },
+            event_receiver,
+        ))
     }
     fn start_receiving(&mut self, sender: Sender<Event>) -> JoinHandle<()> {
         let socket = self.socket.try_clone().unwrap();
         let (stop_sender, stop_reciever) = channel();
         self.stop_sender = Some(stop_sender);
-            let reader = BufReader::new(socket);
+        let reader = BufReader::new(socket);
 
-        thread::spawn(move || { 
+        thread::spawn(move || {
             let lines = reader.lines();
             for line in lines {
-            match stop_reciever.try_recv() {
-                Ok(_) => {
-                    sender.send(Event::Quit);
-                    break;
+                match stop_reciever.try_recv() {
+                    Ok(_) => {
+                        sender.send(Event::Quit).unwrap();
+                        break;
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        panic!()
+                    }
+                    Err(TryRecvError::Empty) => {}
                 }
-                Err(TryRecvError::Disconnected) => {
-                    panic!()
-                }
-                Err(TryRecvError::Empty) => {}
-            }
                 let line = match line {
                     Ok(line) => line,
-                    Err(e) =>panic!("{e}"),
+                    Err(e) => panic!("{e}"),
                 };
                 let mut message = line.split(":");
 
@@ -111,20 +108,22 @@ impl<'a> Session<'a> {
                                 message: message.next().unwrap().to_string(),
                             };
                         }
-                        sender.send(Event::MessageReceived(information));
-                    },
-                    "USERS" => {let _ = sender.send(Event::UsersList(
-                        message
-                            .next()
-                            .unwrap()
-                            .split(",")
-                            .map(|i| i.to_owned())
-                            .collect(),
-                    ));},
+                        sender.send(Event::MessageReceived(information)).unwrap();
+                    }
+                    "USERS" => sender
+                        .send(Event::UsersList(
+                            message
+                                .next()
+                                .unwrap()
+                                .split(",")
+                                .map(|i| i.to_owned())
+                                .collect(),
+                        ))
+                        .unwrap(),
                     _ => {}
                 }
             }
-    })
+        })
     }
     pub fn send(&self, recipient: Recipient, message: &str) -> Result<usize, Box<dyn Error>> {
         let message = match recipient.clone() {
