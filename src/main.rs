@@ -6,6 +6,7 @@ mod application;
 use application::{ActiveEventLoop, Application, EventLoop, GeneralEvent};
 
 use color_eyre::Result;
+use networking::Event;
 use ratatui::prelude::*;
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, Paragraph};
@@ -41,12 +42,23 @@ impl App {
 impl Application for App {
     fn handle_event(&mut self, event_loop: &mut ActiveEventLoop, event: GeneralEvent) {
         println!("eventprint");
-        // event_loop.request_redraw();
+        event_loop.request_redraw();
 
         match event {
-            a => {
-                println!("{a:?}");
-                event_loop.stop();
+            GeneralEvent::Input(input) => {
+                event_loop.exit();
+            }
+            GeneralEvent::Networking(event) => match event{
+                Event::UsersList(users) => {
+                    self.users = users
+                }
+                Event::MessageReceived(message) => {
+                    self.messages.push(format!("{}: {}", message.sender, message.message));
+                }
+                _ => event_loop.exit(),
+
+            }
+            _ => {
                 event_loop.exit();
             }
         }
@@ -57,37 +69,9 @@ impl Application for App {
     }
 
     fn render(&self, frame: &mut Frame) {
-        //     let vertical_split =
-        //         layout::Layout::horizontal([Constraint::Percentage(100), Constraint::Percentage(33)])
-        //             .split(frame.area());
-        //
-        //     let left_split =
-        //         layout::Layout::vertical([Constraint::Percentage(100), Constraint::Percentage(33)])
-        //             .split(vertical_split[0]);
-        //     let message_block = Block::bordered()
-        //         .title("messages")
-        //         .border_style(Style::new().fg(Color::Red));
-        //     let users_block = Block::bordered()
-        //         .title("users")
-        //         .border_style(Style::new().fg(Color::Red));
-        //
-        //     let input_block = Block::new();
-        //     let messages = Paragraph::new(
-        //     "gfdjklgdjhgjlkfdglhfdgjfldkgfd
-        //     gfdjklgdjhgjlkfdglhfdgjfldkgfdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaadg
-        //     gfdjklgdjhgjlkfdglhfdgjfldkgfdfdg
-        //     gfdjklgdjhgjlkfdglhfdgjfldkgfdfdgdf
-        //     2025-02-16T15:54:01fdsf
-        //     async fn dsa
-        //     (arg: Type) -> RetType {
-        //         todo!();
-        //     }",
-        // )
-        // .wrap(ratatui::widgets::Wrap { trim: true });
-        //
-        //     frame.render_widget(&message_block, left_split[0]);
-        //     frame.render_widget(messages, message_block.inner(left_split[0]));
-        //     frame.render_widget(input_block, left_split[1]);
-        //     frame.render_widget(users_block, vertical_split[1]);
+
+        let vertical_split = Layout::new(Direction::Horizontal, Constraint::from_percentages([100, 33]));
+        let message_block = Block::bordered().title("Messages");
+        let users_block = Block::bordered().title("Users");
     }
 }

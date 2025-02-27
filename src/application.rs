@@ -74,6 +74,7 @@ impl ActiveEventLoop {
                 GeneralEvent::Exit => {
                     self.set_exit_flag();
                     self.stop_network_session();
+                println!("Exit0");
                     break;
                 }
                 GeneralEvent::RedrawRequested => {
@@ -84,15 +85,20 @@ impl ActiveEventLoop {
                 }
             };
         }
+        println!("Exit1");
         self.input_handle.take().unwrap().join();
+        println!("Exit2");
         if let Some(network_handle) = self.network_handle.take() {
             network_handle.join();
         }
+        println!("Exit3");
     }
     pub fn exit(&self) {
         if let Ok(mut writer) = self.stop_request.write() {
             *writer = true;
         }
+        self.event_sender.send(GeneralEvent::Exit);
+        ratatui::restore();
     }
     pub fn start_network_session(&mut self, name: &str, socket: &str) -> Res<()> {
         let (session, network_receiver) = Session::new(name, socket)?;

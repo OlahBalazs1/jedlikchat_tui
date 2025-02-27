@@ -24,9 +24,9 @@ pub enum Event {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct MessageInformation {
-    sender: String,
-    recipient: Recipient,
-    message: String,
+    pub sender: String,
+    pub recipient: Recipient,
+    pub message: String,
 }
 impl MessageInformation {
     pub fn is_all(&self) -> bool {
