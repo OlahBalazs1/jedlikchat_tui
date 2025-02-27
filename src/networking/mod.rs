@@ -14,7 +14,7 @@ pub struct Session {
     stop_sender: Option<Sender<()>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Event {
     Quit,
     UsersList(Vec<String>),
@@ -22,7 +22,7 @@ pub enum Event {
     MessageReceived(MessageInformation),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct MessageInformation {
     sender: String,
     recipient: Recipient,
