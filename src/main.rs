@@ -48,16 +48,14 @@ impl Application for App {
             GeneralEvent::Input(input) => {
                 event_loop.exit();
             }
-            GeneralEvent::Networking(event) => match event{
-                Event::UsersList(users) => {
-                    self.users = users
-                }
+            GeneralEvent::Networking(event) => match event {
+                Event::UsersList(users) => self.users = users,
                 Event::MessageReceived(message) => {
-                    self.messages.push(format!("{}: {}", message.sender, message.message));
+                    self.messages
+                        .push(format!("{}: {}", message.sender, message.message));
                 }
                 _ => event_loop.exit(),
-
-            }
+            },
             _ => {
                 event_loop.exit();
             }
@@ -69,8 +67,10 @@ impl Application for App {
     }
 
     fn render(&self, frame: &mut Frame) {
-
-        let vertical_split = Layout::new(Direction::Horizontal, Constraint::from_percentages([100, 33]));
+        let vertical_split = Layout::new(
+            Direction::Horizontal,
+            Constraint::from_percentages([100, 33]),
+        );
         let message_block = Block::bordered().title("Messages");
         let users_block = Block::bordered().title("Users");
     }

@@ -1,0 +1,10 @@
+[package]
+name = "cancel_token"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "cancel_token"
+path = "src/lib.rs"
+
+[dependencies]
