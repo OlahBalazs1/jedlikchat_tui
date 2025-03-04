@@ -1,3 +1,4 @@
+use cancel_token::CancelToken;
 use std::{
     error::Error,
     io::{BufRead, BufReader, Write},
@@ -11,7 +12,7 @@ pub struct Session {
     socket: TcpStream,
     receive_join: Option<JoinHandle<()>>,
     event_sender: Sender<Event>,
-    stop_sender: Option<Sender<()>>,
+    cancel_token: CancelToken,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -42,14 +43,18 @@ pub enum Recipient {
 }
 
 impl Session {
-    pub fn new(name: &str, socket: &str) -> Result<(Self, Receiver<Event>), Box<dyn Error>> {
+    fn new(
+        name: &str,
+        socket: &str,
+        cancel_token: CancelToken,
+    ) -> Result<(Self, Receiver<Event>), Box<dyn Error>> {
         let address = socket.to_socket_addrs().unwrap().next().unwrap();
         let mut connection = TcpStream::connect(address)?;
         let _ = connection.write(format!("ID:{}", name).as_bytes());
         let (event_sender, event_receiver) = channel();
         let mut active_connection = Session {
             name: name.to_string(),
-            stop_sender: None,
+            cancel_token,
             socket: connection,
             receive_join: None,
             event_sender: event_sender.clone(),
@@ -66,22 +71,16 @@ impl Session {
     }
     fn start_receiving(&mut self, sender: Sender<Event>) -> JoinHandle<()> {
         let socket = self.socket.try_clone().unwrap();
-        let (stop_sender, stop_reciever) = channel();
-        self.stop_sender = Some(stop_sender);
         let reader = BufReader::new(socket);
+
+        let exit = self.cancel_token.clone();
 
         thread::spawn(move || {
             let lines = reader.lines();
             for line in lines {
-                match stop_reciever.try_recv() {
-                    Ok(_) => {
-                        sender.send(Event::Quit).unwrap();
-                        break;
-                    }
-                    Err(TryRecvError::Disconnected) => {
-                        panic!()
-                    }
-                    Err(TryRecvError::Empty) => {}
+                if *exit {
+                    sender.send(Event::Quit).unwrap();
+                    break;
                 }
                 let line = match line {
                     Ok(line) => line,
@@ -139,10 +138,7 @@ impl Session {
         Ok(self.socket.try_clone().unwrap().write(message.as_bytes())?)
     }
 
-    pub fn stop(&mut self) {
-        let Some(ref sender) = self.stop_sender else {
-            unreachable!()
-        };
-        sender.send(());
+    pub fn stop(&self) {
+        self.cancel_token.set();
     }
 }

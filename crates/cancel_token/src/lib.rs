@@ -10,7 +10,7 @@ impl CancelToken {
             state: Arc::new(false),
         }
     }
-    pub fn set(&mut self) {
+    pub fn set(&self) {
         // SAFETY: Can't point to invalid address
         unsafe {
             let state: *mut bool = Arc::as_ptr(&self.state) as *mut bool;

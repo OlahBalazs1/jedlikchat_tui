@@ -1,4 +1,5 @@
 use crate::networking::{self, Session};
+use cancel_token::CancelToken;
 use crossterm::event::{self};
 use ratatui::{DefaultTerminal, Frame};
 use std::error::Error;
@@ -28,7 +29,7 @@ pub enum GeneralEvent {
 }
 
 pub struct ActiveEventLoop {
-    stop_request: Arc<RwLock<bool>>,
+    cancel_token: CancelToken,
     event_sender: Sender<GeneralEvent>,
     network_handle: Option<JoinHandle<()>>,
     network_session: Option<Session>,
@@ -43,9 +44,7 @@ impl ActiveEventLoop {
         }
     }
     fn set_exit_flag(&self) {
-        if let Ok(mut writer) = self.stop_request.write() {
-            *writer = true;
-        };
+        self.cancel_token.set();
     }
     pub fn request_redraw(&self) {
         self.event_sender.send(GeneralEvent::RedrawRequested);
@@ -53,7 +52,7 @@ impl ActiveEventLoop {
     pub fn new() -> Self {
         let (event_sender, event_receiver) = channel();
         let mut active_loop = Self {
-            stop_request: Arc::new(RwLock::new(false)),
+            cancel_token: CancelToken::new(),
             event_sender,
             network_handle: None,
             network_session: None,
@@ -74,7 +73,7 @@ impl ActiveEventLoop {
                 GeneralEvent::Exit => {
                     self.set_exit_flag();
                     self.stop_network_session();
-                println!("Exit0");
+                    println!("Exit0");
                     break;
                 }
                 GeneralEvent::RedrawRequested => {
@@ -94,9 +93,7 @@ impl ActiveEventLoop {
         println!("Exit3");
     }
     pub fn exit(&self) {
-        if let Ok(mut writer) = self.stop_request.write() {
-            *writer = true;
-        }
+        self.set_exit_flag();
         self.event_sender.send(GeneralEvent::Exit);
         ratatui::restore();
     }
@@ -108,10 +105,10 @@ impl ActiveEventLoop {
     }
     fn start_input_listener(&mut self) {
         let event_sender = self.event_sender.clone();
-        let exit = self.stop_request.clone();
+        let exit = self.cancel_token.clone();
 
         self.input_handle = Some(thread::spawn(move || loop {
-            if *exit.read().unwrap() {
+            if *exit {
                 break;
             }
             let is_event = match event::poll(Duration::from_millis(50)) {
@@ -130,9 +127,9 @@ impl ActiveEventLoop {
         network_receiver: Receiver<networking::Event>,
         general_sender: Sender<GeneralEvent>,
     ) -> JoinHandle<()> {
-        let exit = self.stop_request.clone();
+        let exit = self.cancel_token.clone();
         thread::spawn(move || loop {
-            if *exit.read().unwrap() {
+            if *exit {
                 break;
             }
             match network_receiver.recv_timeout(Duration::from_millis(50)) {
