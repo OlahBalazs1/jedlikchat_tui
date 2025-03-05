@@ -43,7 +43,7 @@ pub enum Recipient {
 }
 
 impl Session {
-    fn new(
+    pub fn new(
         name: &str,
         socket: &str,
         cancel_token: CancelToken,

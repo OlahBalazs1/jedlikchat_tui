@@ -98,7 +98,7 @@ impl ActiveEventLoop {
         ratatui::restore();
     }
     pub fn start_network_session(&mut self, name: &str, socket: &str) -> Res<()> {
-        let (session, network_receiver) = Session::new(name, socket)?;
+        let (session, network_receiver) = Session::new(name, socket, self.cancel_token.clone())?;
         self.network_handle = Some(self.wrap_network(network_receiver, self.event_sender.clone()));
         self.network_session = Some(session);
         Ok(())

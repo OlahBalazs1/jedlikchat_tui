@@ -7,9 +7,10 @@ use application::{ActiveEventLoop, Application, EventLoop, GeneralEvent};
 
 use color_eyre::Result;
 use networking::Event;
+use ratatui::layout::Flex;
 use ratatui::prelude::*;
 use ratatui::style::{Color, Style};
-use ratatui::widgets::{Block, Paragraph};
+use ratatui::widgets::{Block, Padding, Paragraph};
 use ratatui::{layout, DefaultTerminal, Frame};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -21,11 +22,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+enum AppState {
+    ConnectingToNetwork,
+    Connected,
+}
+
 struct App {
     messages: Vec<String>,
     users: Vec<String>,
     session: Option<Session>,
     terminal: Option<DefaultTerminal>,
+    state: AppState,
 }
 
 impl App {
@@ -35,6 +42,7 @@ impl App {
             session: None,
             users: vec![],
             terminal: None,
+            state: AppState::ConnectingToNetwork,
         }
     }
 }
@@ -67,11 +75,28 @@ impl Application for App {
     }
 
     fn render(&self, frame: &mut Frame) {
-        let vertical_split = Layout::new(
-            Direction::Horizontal,
-            Constraint::from_percentages([100, 33]),
-        );
-        let message_block = Block::bordered().title("Messages");
-        let users_block = Block::bordered().title("Users");
+        match self.state {
+            AppState::ConnectingToNetwork => {
+                let block = Block::bordered().padding(Padding::horizontal(1));
+                let horizontal = Constraint::Percentage(50);
+                let vertical = Constraint::Percentage(50);
+                frame.render_widget(block, center(frame.area(), horizontal, vertical));
+            }
+            AppState::Connected => {
+                let vertical_split = Layout::new(
+                    Direction::Horizontal,
+                    Constraint::from_percentages([100, 33]),
+                );
+                let message_block = Block::bordered().title("Messages");
+                let users_block = Block::bordered().title("Users");
+            }
+        }
     }
+}
+fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
+    let [area] = Layout::horizontal([horizontal])
+        .flex(Flex::Center)
+        .areas(area);
+    let [area] = Layout::vertical([vertical]).flex(Flex::Center).areas(area);
+    area
 }
