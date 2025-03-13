@@ -4,7 +4,6 @@ use crossterm::event::{self};
 use ratatui::{DefaultTerminal, Frame};
 use std::error::Error;
 use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
-use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 type Res<T> = Result<T, Box<dyn Error>>;
@@ -13,9 +12,9 @@ pub trait Application {
 
     fn init(&mut self, event_loop: &mut ActiveEventLoop);
 
-    fn render(&self, frame: &mut Frame);
+    fn render(&mut self, frame: &mut Frame);
 
-    fn redraw(&self, mut terminal: DefaultTerminal) -> Res<()> {
+    fn redraw(&mut self, mut terminal: DefaultTerminal) -> Res<()> {
         terminal.draw(|frame| self.render(frame))?;
         Ok(())
     }
@@ -39,7 +38,7 @@ pub struct ActiveEventLoop {
 
 impl ActiveEventLoop {
     pub fn stop_network_session(&mut self) {
-        if let Some(mut session) = self.network_session.take() {
+        if let Some(session) = self.network_session.take() {
             session.stop();
         }
     }
@@ -47,7 +46,9 @@ impl ActiveEventLoop {
         self.cancel_token.set();
     }
     pub fn request_redraw(&self) {
-        self.event_sender.send(GeneralEvent::RedrawRequested);
+        self.event_sender.send(GeneralEvent::RedrawRequested).unwrap_or_else(|_| {
+            eprintln!("Couldn't request redraw, there is something wrong with the event loop");
+            self.cancel_token.set()});
     }
     pub fn new() -> Self {
         let (event_sender, event_receiver) = channel();
@@ -83,14 +84,16 @@ impl ActiveEventLoop {
                 }
             };
         }
-        self.input_handle.take().unwrap().join();
+        self.input_handle.take().unwrap().join().unwrap_or_else(|_| eprintln!("Couldn't join on handle"));
         if let Some(network_handle) = self.network_handle.take() {
-            network_handle.join();
+            network_handle.join().unwrap_or_else(|_| eprintln!("Couldn't join on handle"));
         }
     }
     pub fn exit(&self) {
         self.set_exit_flag();
-        self.event_sender.send(GeneralEvent::Exit);
+        self.event_sender.send(GeneralEvent::Exit).unwrap_or_else(|_| {
+            eprintln!("Couldn't request redraw, there is something wrong with the event loop");
+            self.cancel_token.set()});
         ratatui::restore();
     }
     pub fn start_network_session(&mut self, name: &str, socket: &str) -> Res<()> {

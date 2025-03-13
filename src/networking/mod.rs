@@ -3,7 +3,7 @@ use std::{
     error::Error,
     io::{BufRead, BufReader, Write},
     net::{TcpStream, ToSocketAddrs},
-    sync::mpsc::{channel, Receiver, Sender, TryRecvError},
+    sync::mpsc::{channel, Receiver, Sender},
     thread::{self, JoinHandle},
 };
 
